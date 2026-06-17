@@ -7,10 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies first (layer caching)
-COPY requirements.txt .
+# Install API-only deps (no TensorFlow — models are pre-trained artifacts)
+COPY requirements-api.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-api.txt
 
 # Copy source
 COPY src/ ./src/
