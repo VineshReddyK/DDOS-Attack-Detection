@@ -33,7 +33,7 @@ train-merge:
 	PYTHONPATH=$(SRC_DIR) $(PYTHON) $(SRC_DIR)/train.py --data data/raw/ --merge
 
 serve:
-	PYTHONPATH=$(SRC_DIR) uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=$(SRC_DIR) uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
 	PYTHONPATH=$(SRC_DIR) pytest tests/ -v --cov=$(SRC_DIR) --cov-report=term-missing

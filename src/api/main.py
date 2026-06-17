@@ -2,7 +2,7 @@
 FastAPI application entry point.
 
 Run locally:
-    uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+    uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 Or via Makefile:
     make serve
