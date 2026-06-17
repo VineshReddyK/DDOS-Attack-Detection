@@ -29,7 +29,6 @@ class SHAPExplainer:
             bg = X_background if X_background is not None else X[:100]
             self._build(bg)
 
-        import shap
         shap_values = self._explainer.shap_values(X)
 
         if isinstance(shap_values, list):
