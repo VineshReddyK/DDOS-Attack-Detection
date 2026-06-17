@@ -39,7 +39,6 @@ class DataPreprocessor:
         return df
 
     def clean(self, df: pd.DataFrame) -> pd.DataFrame:
-        cfg = self.config["data"]
         drop_cols = [c for c in self.config["features"]["drop_columns"] if c in df.columns]
         df = df.drop(columns=drop_cols)
 

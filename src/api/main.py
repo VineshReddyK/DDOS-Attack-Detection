@@ -13,15 +13,14 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+sys.path.insert(0, str(Path(__file__).parent.parent))  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from api.routes import router
-from api.model_registry import registry
-from utils.logger import setup_logger
+from api.model_registry import registry  # noqa: E402
+from api.routes import router  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import RedirectResponse  # noqa: E402
+from utils.logger import setup_logger  # noqa: E402
 
 setup_logger("ddos_api", log_file="reports/api.log")
 logger = logging.getLogger("ddos_api")

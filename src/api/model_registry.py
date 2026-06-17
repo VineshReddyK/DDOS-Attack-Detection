@@ -5,7 +5,6 @@ serves them to API route handlers.
 import os
 from pathlib import Path
 from typing import Optional
-import numpy as np
 import joblib
 import logging
 

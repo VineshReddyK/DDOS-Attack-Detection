@@ -6,7 +6,6 @@ Usage:
     python src/train.py --data data/raw/ --merge          # merge all CSVs in folder
 """
 import argparse
-import json
 from pathlib import Path
 
 from data.preprocessor import DataPreprocessor

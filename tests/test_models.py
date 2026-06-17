@@ -1,12 +1,13 @@
-import numpy as np
-import pytest
 import sys
 from pathlib import Path
 
+import numpy as np
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from models.random_forest_model import RandomForestModel
-from models.kmeans_model import KMeansAnomalyDetector
+from models.kmeans_model import KMeansAnomalyDetector  # noqa: E402
+from models.random_forest_model import RandomForestModel  # noqa: E402
 
 
 @pytest.fixture

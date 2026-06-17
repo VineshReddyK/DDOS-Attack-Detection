@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional
-import numpy as np
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class TrafficFlowRequest(BaseModel):
