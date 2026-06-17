@@ -40,6 +40,9 @@ reports/*.log
 .vscode/
 *.swp
 
+# Environment
+.env
+
 # OS
 .DS_Store
 Thumbs.db
