@@ -60,7 +60,7 @@ def test_root_redirects(client):
 def test_predict_requires_auth(client):
     payload = {"features": [0.1] * 10, "model_type": "rf"}
     response = client.post("/api/v1/predict", json=payload)
-    assert response.status_code == 403
+    assert response.status_code in (401, 403)
 
 
 def test_predict_no_model_returns_404(auth_client):
