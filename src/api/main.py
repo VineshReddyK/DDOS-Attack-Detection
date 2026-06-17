@@ -55,9 +55,9 @@ app = FastAPI(
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.util import get_remote_address
+    from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
+    from slowapi.errors import RateLimitExceeded  # noqa: E402
+    from slowapi.util import get_remote_address  # noqa: E402
 
     limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
     app.state.limiter = limiter
@@ -68,7 +68,7 @@ except ImportError:
 
 # ── Prometheus metrics ────────────────────────────────────────────────────────
 try:
-    from api.middleware.metrics import PrometheusMiddleware, metrics_endpoint
+    from api.middleware.metrics import PrometheusMiddleware, metrics_endpoint  # noqa: E402
     app.add_middleware(PrometheusMiddleware)
 
     @app.get("/metrics", include_in_schema=False)
