@@ -17,9 +17,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))  # noqa: E402
 
 from api.model_registry import registry  # noqa: E402
 from api.routes import router  # noqa: E402
-from fastapi import FastAPI  # noqa: E402
+from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import RedirectResponse  # noqa: E402
+from fastapi.responses import JSONResponse, RedirectResponse  # noqa: E402
 from utils.logger import setup_logger  # noqa: E402
 
 setup_logger("ddos_api", log_file="reports/api.log")
@@ -28,7 +28,7 @@ logger = logging.getLogger("ddos_api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting DDoS Detection API — loading models...")
+    logger.info("Starting DDoS Detection API v2 — loading models...")
     registry.load_all()
     loaded = [k for k, v in registry.loaded_models.items() if v]
     logger.info("Models ready: %s", loaded if loaded else "none (train first)")
@@ -39,10 +39,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DDoS Attack Detection API",
     description=(
-        "REST API for real-time DDoS attack detection using machine learning. "
-        "Supports Random Forest, K-Means anomaly detection, ANN, and CNN-LSTM models."
+        "Real-time DDoS attack detection using ML ensemble (RF + ANN + CNN-LSTM + KMeans). "
+        "Features: JWT auth, SHAP explainability, data drift detection, WebSocket streaming, "
+        "Prometheus metrics, rate limiting."
     ),
-    version="1.0.0",
+    version="2.0.0",
     contact={
         "name": "Vinesh Reddy Kankanalapally",
         "url": "https://linkedin.com/in/vinesh-reddy-kankanalapally",
@@ -52,6 +53,33 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+
+    limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    logger.info("Rate limiting enabled: 200 req/min")
+except ImportError:
+    logger.warning("slowapi not installed — rate limiting disabled")
+
+# ── Prometheus metrics ────────────────────────────────────────────────────────
+try:
+    from api.middleware.metrics import PrometheusMiddleware, metrics_endpoint
+    app.add_middleware(PrometheusMiddleware)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def prometheus_metrics():
+        return await metrics_endpoint()
+
+    logger.info("Prometheus metrics enabled at /metrics")
+except Exception as e:
+    logger.warning("Prometheus middleware unavailable: %s", e)
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
@@ -66,3 +94,9 @@ app.include_router(router, prefix="/api/v1")
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse(url="/docs")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})

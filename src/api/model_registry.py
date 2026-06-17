@@ -30,7 +30,10 @@ class ModelRegistry:
         self.kmeans = None
         self.ann = None
         self.cnn_lstm = None
+        self.ensemble = None
+        self.drift_detector = None
         self.class_names: list[str] = []
+        self.feature_names: list[str] = []
         self.feature_count: Optional[int] = None
         self._initialized = True
 
@@ -84,6 +87,27 @@ class ModelRegistry:
             meta = joblib.load(str(meta_path))
             self.class_names = meta.get("class_names", [])
             self.feature_count = meta.get("feature_count")
+            self.feature_names = meta.get("feature_names", [f"feature_{i}" for i in range(self.feature_count or 0)])
+
+        # Ensemble (requires at least one model loaded)
+        if any([self.rf, self.ann, self.kmeans, self.cnn_lstm]):
+            try:
+                from models.ensemble import EnsemblePredictor
+                self.ensemble = EnsemblePredictor(self)
+                logger.info("Ensemble predictor ready")
+            except Exception as e:
+                logger.warning("Could not init ensemble: %s", e)
+
+        # Drift detector
+        drift_path = MODELS_DIR / "drift_detector.joblib"
+        if drift_path.exists():
+            try:
+                from utils.drift_detector import DriftDetector
+                self.drift_detector = DriftDetector(self.feature_names or None)
+                self.drift_detector.load(str(drift_path))
+                logger.info("Loaded DriftDetector")
+            except Exception as e:
+                logger.warning("Could not load DriftDetector: %s", e)
 
     @property
     def loaded_models(self) -> dict[str, bool]:
@@ -92,6 +116,7 @@ class ModelRegistry:
             "kmeans": self.kmeans is not None,
             "ann": self.ann is not None,
             "cnn_lstm": self.cnn_lstm is not None,
+            "ensemble": self.ensemble is not None,
         }
 
     def get_model(self, model_type: str):
@@ -100,6 +125,7 @@ class ModelRegistry:
             "kmeans": self.kmeans,
             "ann": self.ann,
             "cnn_lstm": self.cnn_lstm,
+            "ensemble": self.ensemble,
         }
         model = mapping.get(model_type)
         if model is None:

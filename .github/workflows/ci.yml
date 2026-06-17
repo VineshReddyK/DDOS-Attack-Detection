@@ -78,7 +78,7 @@ jobs:
       - name: Install API dependencies
         run: |
           pip install --upgrade pip
-          pip install fastapi "uvicorn[standard]" pydantic pyyaml httpx pytest joblib numpy scikit-learn
+          pip install fastapi "uvicorn[standard]" pydantic pyyaml httpx pytest joblib numpy scikit-learn PyJWT slowapi prometheus-client websockets
 
       - name: Run API unit tests
         env:
