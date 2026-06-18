@@ -252,6 +252,21 @@ Push to main
 
 [CIC-DDoS2019](https://www.unb.ca/cic/datasets/ddos-2019.html) — University of New Brunswick. Contains benign traffic and 12 DDoS attack types (DNS, NTP, LDAP, MSSQL, NetBIOS, SNMP, UDP, UDP-Lag, WebDDoS, SYN, TFTP, UDPLag).
 
+## Future Enhancements
+
+| Enhancement | Description | Est. Time |
+|---|---|---|
+| **Model performance metrics table** | Add accuracy, F1-score, precision, recall, and AUC-ROC per model (RF / ANN / CNN-LSTM / K-Means) and for the ensemble — currently absent from README | 45 min |
+| **Inference latency benchmarks** | Document prediction time per request (p50/p95/p99) at various traffic loads — critical for validating real-time detection claims | 30 min |
+| **Dependabot for Python packages** | Add `.github/dependabot.yml` with `pip` ecosystem for weekly updates to scikit-learn, FastAPI, torch, and other deps | 10 min |
+| **GitHub repository topics** | Set topics: `python`, `fastapi`, `machine-learning`, `cybersecurity`, `ddos-detection`, `random-forest`, `deep-learning`, `kubernetes` | 5 min |
+| **SECURITY.md** | Add vulnerability disclosure policy and responsible disclosure contact | 15 min |
+| **Issue + PR templates** | Add `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, and `PULL_REQUEST_TEMPLATE.md` | 20 min |
+| **CI badge in README header** | Add CI status badge to README top (already have CI workflow — just link the badge) | 5 min |
+| **GDPR / compliance section** | Document data handling for traffic features — relevant if deployed for enterprise or ISP use cases | 30 min |
+
+---
+
 ## Author
 
 **Vinesh Reddy Kankanalapally** — MS Computer Science, University of Colorado Denver  
