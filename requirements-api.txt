@@ -11,7 +11,7 @@ python-multipart>=0.0.6
 # Auth
 PyJWT>=2.8.0
 # Rate limiting
-slowapi>=0.1.9
+slowapi>=0.1.10
 # Metrics
 prometheus-client>=0.19.0
 # WebSocket (included in fastapi/starlette, listed explicitly)
