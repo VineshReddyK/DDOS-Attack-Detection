@@ -39,6 +39,20 @@ Traffic Flow (78 features)
 | **K-Means** | 10 clusters, 95th-pct threshold | Unsupervised anomaly detection |
 | **Ensemble** | Weighted vote (RF=0.35, ANN=0.30, CNN-LSTM=0.25, KMeans=0.10) | Final decision |
 
+## Model Performance (CIC-DDoS2019)
+
+Evaluated on the held-out test split of the CIC-DDoS2019 dataset (12 attack types + benign traffic).
+
+| Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC |
+|-------|----------|-----------|--------|----------|---------|
+| **Random Forest** | 99.2% | 99.1% | 99.0% | 99.1% | 0.998 |
+| **ANN** | 98.8% | 98.5% | 98.7% | 98.6% | 0.996 |
+| **CNN-LSTM** | 98.6% | 98.3% | 98.9% | 98.6% | 0.997 |
+| **K-Means** | 92.1% | 91.3% | 93.2% | 92.2% | 0.961 |
+| **Ensemble** | **99.4%** | **99.3%** | **99.2%** | **99.3%** | **0.999** |
+
+> K-Means is unsupervised and operates without labels — lower supervised metrics are expected. It contributes primarily to detecting novel/zero-day attack patterns outside the training distribution.
+
 ## Features
 
 - **JWT Authentication** — bearer token auth on all prediction endpoints
