@@ -283,6 +283,34 @@ Measured on a single-core CPU (no GPU) with warm model cache. All times are end-
 
 [CIC-DDoS2019](https://www.unb.ca/cic/datasets/ddos-2019.html) — University of New Brunswick. Contains benign traffic and 12 DDoS attack types (DNS, NTP, LDAP, MSSQL, NetBIOS, SNMP, UDP, UDP-Lag, WebDDoS, SYN, TFTP, UDPLag).
 
+## Data & Compliance
+
+### Data Handling
+
+This system processes **network traffic features** (78 numerical metrics per flow: packet sizes, inter-arrival times, byte ratios, flag counts, etc.). It does **not** process:
+- Packet payloads or content
+- Personally identifiable information (PII)
+- Source/destination IP addresses (features are derived statistics, not raw IPs)
+
+### GDPR Considerations
+
+| Concern | Status |
+|---------|--------|
+| Personal data in features | No — all 78 features are statistical aggregates |
+| Data retention | Features are processed in-memory; no flow data is persisted by default |
+| Right to erasure | Not applicable — no user data stored |
+| Data minimization | Only the 78 pre-defined CIC features are extracted; raw packets are discarded |
+
+### Enterprise / ISP Deployment
+
+If deploying in a production network environment where traffic belongs to identifiable users:
+- Consult your legal team on applicable data protection laws (GDPR, CCPA, etc.)
+- Consider anonymizing source IPs before feature extraction
+- Document your data retention and deletion policy
+- Ensure model predictions are not used as sole basis for user-impacting decisions without human review
+
+---
+
 ## Future Enhancements
 
 | Enhancement | Description |
