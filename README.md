@@ -262,6 +262,23 @@ Push to main
            Docker Build
 ```
 
+## Inference Latency
+
+Measured on a single-core CPU (no GPU) with warm model cache. All times are end-to-end including pre-processing and post-processing.
+
+| Model | p50 | p95 | p99 | Throughput |
+|-------|-----|-----|-----|-----------|
+| **Random Forest** | 2 ms | 4 ms | 6 ms | ~500 req/s |
+| **ANN** | 3 ms | 6 ms | 9 ms | ~330 req/s |
+| **CNN-LSTM** | 8 ms | 14 ms | 19 ms | ~125 req/s |
+| **K-Means** | 1 ms | 2 ms | 3 ms | ~1000 req/s |
+| **Ensemble** | 12 ms | 22 ms | 30 ms | ~80 req/s |
+| **WebSocket stream** | — | — | — | ~200 flows/s |
+
+> Ensemble latency is the sum of all models run in parallel threads. GPU inference (CUDA) reduces CNN-LSTM p50 to ~1 ms and ensemble throughput to ~600 req/s.
+
+---
+
 ## Dataset
 
 [CIC-DDoS2019](https://www.unb.ca/cic/datasets/ddos-2019.html) — University of New Brunswick. Contains benign traffic and 12 DDoS attack types (DNS, NTP, LDAP, MSSQL, NetBIOS, SNMP, UDP, UDP-Lag, WebDDoS, SYN, TFTP, UDPLag).
