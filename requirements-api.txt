@@ -9,7 +9,7 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.4.0
 python-multipart>=0.0.6
 # Auth
-PyJWT>=2.8.0
+PyJWT>=2.13.0
 # Rate limiting
 slowapi>=0.1.9
 # Metrics
