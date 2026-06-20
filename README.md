@@ -315,14 +315,7 @@ If deploying in a production network environment where traffic belongs to identi
 
 | Enhancement | Description |
 |---|---|
-| **Model performance metrics table** | Add accuracy, F1-score, precision, recall, and AUC-ROC per model (RF / ANN / CNN-LSTM / K-Means) and for the ensemble — currently absent from README |
-| **Inference latency benchmarks** | Document prediction time per request (p50/p95/p99) at various traffic loads — critical for validating real-time detection claims |
-| **Dependabot for Python packages** | Add `.github/dependabot.yml` with `pip` ecosystem for weekly updates to scikit-learn, FastAPI, torch, and other deps |
-| **GitHub repository topics** | Set topics: `python`, `fastapi`, `machine-learning`, `cybersecurity`, `ddos-detection`, `random-forest`, `deep-learning`, `kubernetes` |
-| **SECURITY.md** | Add vulnerability disclosure policy and responsible disclosure contact |
-| **Issue + PR templates** | Add `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, and `PULL_REQUEST_TEMPLATE.md` |
-| **CI badge in README header** | Add CI status badge to README top (already have CI workflow — just link the badge) |
-| **GDPR / compliance section** | Document data handling for traffic features — relevant if deployed for enterprise or ISP use cases |
+| **GitHub repository topics** | Set topics in repo Settings: `python`, `fastapi`, `machine-learning`, `cybersecurity`, `ddos-detection`, `random-forest`, `deep-learning`, `kubernetes` |
 
 ---
 
