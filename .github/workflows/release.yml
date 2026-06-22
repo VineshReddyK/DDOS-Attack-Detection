@@ -1,0 +1,58 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes from commits
+        id: notes
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          git log $RANGE --pretty=format:"- %s" --no-merges >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DDoS Detection ${{ github.ref_name }}"
+          body: |
+            ## What's Changed
+
+            ${{ steps.notes.outputs.NOTES }}
+
+            ## Docker
+
+            ```bash
+            docker pull ghcr.io/VineshReddyK/DDOS-Attack-Detection:${{ github.ref_name }}
+            ```
+
+            ## Install
+
+            ```bash
+            git clone https://github.com/VineshReddyK/DDOS-Attack-Detection.git
+            cd DDOS-Attack-Detection
+            pip install -r requirements.txt
+            ```
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
