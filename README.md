@@ -1,6 +1,7 @@
 # DDoS Attack Detection
 
 [![CI](https://github.com/VineshReddyK/DDOS-Attack-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/VineshReddyK/DDOS-Attack-Detection/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VineshReddyK/DDOS-Attack-Detection/actions/workflows/codeql.yml/badge.svg)](https://github.com/VineshReddyK/DDOS-Attack-Detection/actions/workflows/codeql.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-2.0-009688.svg)](https://fastapi.tiangolo.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
