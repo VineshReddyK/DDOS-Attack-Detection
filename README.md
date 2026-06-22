@@ -311,14 +311,6 @@ If deploying in a production network environment where traffic belongs to identi
 
 ---
 
-## Future Enhancements
-
-| Enhancement | Description |
-|---|---|
-| **GitHub repository topics** | Set topics in repo Settings: `python`, `fastapi`, `machine-learning`, `cybersecurity`, `ddos-detection`, `random-forest`, `deep-learning`, `kubernetes` |
-
----
-
 ## Author
 
 **Vinesh Reddy Kankanalapally** — MS Computer Science, University of Colorado Denver  
