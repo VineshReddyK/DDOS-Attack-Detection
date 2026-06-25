@@ -61,9 +61,8 @@ def main():
     n_features = X_train.shape[1]
     all_results = {}
 
-    # Random Forest
     if not args.skip_rf:
-        logger.info("=== Random Forest ===")
+        logger.info("training random forest...")
         rf = RandomForestModel(CONFIG)
         rf.train(X_train, y_train)
         rf_results = rf.evaluate(X_test, y_test, class_names)
@@ -80,9 +79,8 @@ def main():
         )
         all_results["Random Forest"] = rf_metrics
 
-    # KMeans
     if not args.skip_kmeans:
-        logger.info("=== KMeans Anomaly Detection ===")
+        logger.info("training kmeans anomaly detector...")
         km = KMeansAnomalyDetector(CONFIG)
         km.train(X_train)
         km_eval = km.evaluate(X_test)
@@ -91,9 +89,8 @@ def main():
         save_metrics(km_eval, str(REPORTS_DIR / "kmeans_metrics.json"))
         km.save(str(MODELS_DIR / "kmeans.joblib"))
 
-    # ANN
     if not args.skip_ann:
-        logger.info("=== Artificial Neural Network ===")
+        logger.info("training ANN...")
         ann = ANNModel(CONFIG)
         ann.build(n_features, num_classes)
         ann.train(X_train, y_train, X_val, y_val)
@@ -109,9 +106,8 @@ def main():
         )
         all_results["ANN"] = ann_metrics
 
-    # CNN-LSTM
     if not args.skip_cnn_lstm:
-        logger.info("=== CNN-LSTM ===")
+        logger.info("training CNN-LSTM...")
         cnn_lstm = CNNLSTMModel(CONFIG)
         cnn_lstm.build(n_features, num_classes)
         cnn_lstm.train(X_train, y_train, X_val, y_val)
@@ -136,7 +132,7 @@ def main():
         plot_model_comparison(all_results, save_path=str(FIGURES_DIR / "model_comparison.png"))
         save_metrics(all_results, str(REPORTS_DIR / "all_models_comparison.json"))
 
-    logger.info("Training pipeline complete. Results saved to reports/")
+    logger.info("training complete. results saved to reports/")
 
 
 if __name__ == "__main__":
