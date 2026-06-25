@@ -1,6 +1,6 @@
 """
 SHAP-based explainability for the Random Forest model.
-Answers: "Why was this network flow flagged as an attack?"
+Uses TreeExplainer to show which features drove a given prediction.
 """
 import numpy as np
 import logging
