@@ -10,10 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class KMeansAnomalyDetector:
-    """
-    Unsupervised anomaly detection via KMeans clustering.
-    Samples far from their cluster centroid are flagged as anomalous.
-    """
+    # flags samples far from their cluster centroid as anomalous
 
     def __init__(self, config_path: str = "configs/config.yaml"):
         with open(config_path) as f:
