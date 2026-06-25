@@ -22,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 VERSION = "2.0.0"
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
-
 DEMO_USERS = {"admin": "ddos-demo-password", "user": "readonly123"}
 
 
@@ -36,8 +34,6 @@ def issue_token(body: TokenRequest):
     from .auth import ACCESS_TOKEN_EXPIRE_MINUTES
     return TokenResponse(access_token=token, expires_in_minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-
-# ── System ────────────────────────────────────────────────────────────────────
 
 @router.get("/health", response_model=HealthResponse, tags=["System"])
 def health_check():
@@ -56,8 +52,6 @@ def model_info():
         feature_count=registry.feature_count,
     )
 
-
-# ── Prediction ────────────────────────────────────────────────────────────────
 
 @router.post("/predict", response_model=PredictionResponse, tags=["Prediction"])
 def predict_single(request: TrafficFlowRequest, _: str = Depends(verify_token)):
@@ -121,8 +115,6 @@ def predict_ensemble(request: EnsembleRequest, _: str = Depends(verify_token)):
     )
 
 
-# ── Explainability ────────────────────────────────────────────────────────────
-
 @router.post("/explain", response_model=ExplainResponse, tags=["Explainability"])
 def explain_prediction(request: ExplainRequest, _: str = Depends(verify_token)):
     if registry.rf is None:
@@ -140,8 +132,6 @@ def explain_prediction(request: ExplainRequest, _: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=f"SHAP explanation failed: {e}")
 
 
-# ── Drift Detection ───────────────────────────────────────────────────────────
-
 @router.post("/drift", response_model=DriftResponse, tags=["Monitoring"])
 def detect_drift(request: DriftRequest, _: str = Depends(verify_token)):
     if registry.drift_detector is None:
@@ -150,8 +140,6 @@ def detect_drift(request: DriftRequest, _: str = Depends(verify_token)):
     result = registry.drift_detector.detect(X)
     return DriftResponse(**result)
 
-
-# ── WebSocket streaming ───────────────────────────────────────────────────────
 
 @router.websocket("/ws/detect")
 async def websocket_detect(websocket: WebSocket):
@@ -226,8 +214,6 @@ async def websocket_detect(websocket: WebSocket):
         if m:
             m["active_connections"].dec()
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_model_or_404(model_type: str):
     try:
