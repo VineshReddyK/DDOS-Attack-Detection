@@ -53,7 +53,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Rate limiting ─────────────────────────────────────────────────────────────
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
     from slowapi.errors import RateLimitExceeded  # noqa: E402
@@ -66,7 +65,6 @@ try:
 except ImportError:
     logger.warning("slowapi not installed — rate limiting disabled")
 
-# ── Prometheus metrics ────────────────────────────────────────────────────────
 try:
     from api.middleware.metrics import PrometheusMiddleware, metrics_endpoint  # noqa: E402
     app.add_middleware(PrometheusMiddleware)
@@ -79,7 +77,6 @@ try:
 except Exception as e:
     logger.warning("Prometheus middleware unavailable: %s", e)
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
