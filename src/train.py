@@ -1,12 +1,15 @@
 """
-Main training pipeline — trains all four models and saves results.
+Training pipeline - trains all four models sequentially and saves everything to disk.
 
 Usage:
     python src/train.py --data data/raw/CIC-DDoS2019.csv
-    python src/train.py --data data/raw/ --merge          # merge all CSVs in folder
+    python src/train.py --data data/raw/ --merge     # merges all CSVs in the folder
+    python src/train.py --data data/raw/ --merge --skip-ann --skip-cnn-lstm  # RF + KMeans only
 """
 import argparse
 from pathlib import Path
+
+import numpy as np
 
 from data.preprocessor import DataPreprocessor
 from models.random_forest_model import RandomForestModel
@@ -15,14 +18,16 @@ from models.ann_model import ANNModel
 from models.cnn_lstm_model import CNNLSTMModel
 from utils.metrics import compute_metrics, save_metrics, compare_models
 from utils.visualizer import (
-    plot_confusion_matrix, plot_training_history,
-    plot_feature_importance, plot_model_comparison, plot_anomaly_scores,
+    plot_confusion_matrix,
+    plot_training_history,
+    plot_feature_importance,
+    plot_model_comparison,
+    plot_anomaly_scores,
 )
 from utils.logger import setup_logger
 
-import numpy as np
-
 logger = setup_logger(log_file="reports/training.log")
+
 CONFIG = "configs/config.yaml"
 MODELS_DIR = Path("models")
 REPORTS_DIR = Path("reports")
@@ -30,9 +35,9 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Train DDoS detection models")
-    p.add_argument("--data", required=True, help="Path to CSV file or directory of CSVs")
-    p.add_argument("--merge", action="store_true", help="Merge all CSVs in --data directory")
+    p = argparse.ArgumentParser(description="train DDoS detection models")
+    p.add_argument("--data", required=True, help="path to CSV or folder of CSVs")
+    p.add_argument("--merge", action="store_true", help="merge all CSVs in --data dir")
     p.add_argument("--skip-rf", action="store_true")
     p.add_argument("--skip-kmeans", action="store_true")
     p.add_argument("--skip-ann", action="store_true")
@@ -45,6 +50,7 @@ def main():
     preprocessor = DataPreprocessor(CONFIG)
 
     if args.merge:
+        # load and merge all CSVs in the directory, then process
         df = preprocessor.load_and_merge(args.data)
         df = preprocessor.clean(df)
         df, y = preprocessor.encode_labels(df)
@@ -59,28 +65,37 @@ def main():
     class_names = preprocessor.get_class_names()
     num_classes = len(class_names)
     n_features = X_train.shape[1]
+
+    logger.info("classes: %s", class_names)
+    logger.info("feature count: %d", n_features)
+
     all_results = {}
 
+    # --- Random Forest ---
     if not args.skip_rf:
-        logger.info("training random forest...")
+        logger.info("=== training random forest ===")
         rf = RandomForestModel(CONFIG)
         rf.train(X_train, y_train)
         rf_results = rf.evaluate(X_test, y_test, class_names)
         rf_metrics = compute_metrics(y_test, rf.predict(X_test), class_names=class_names)
         save_metrics(rf_metrics, str(REPORTS_DIR / "rf_metrics.json"))
         rf.save(str(MODELS_DIR / "random_forest.joblib"))
+
         if feature_cols:
             importances = rf.feature_importances(feature_cols)
             plot_feature_importance(importances, save_path=str(FIGURES_DIR / "rf_feature_importance.png"))
+
         plot_confusion_matrix(
-            np.array(rf_results["confusion_matrix"]), class_names,
+            np.array(rf_results["confusion_matrix"]),
+            class_names,
             "Random Forest Confusion Matrix",
             save_path=str(FIGURES_DIR / "rf_confusion_matrix.png"),
         )
         all_results["Random Forest"] = rf_metrics
 
+    # --- KMeans anomaly detector ---
     if not args.skip_kmeans:
-        logger.info("training kmeans anomaly detector...")
+        logger.info("=== training kmeans ===")
         km = KMeansAnomalyDetector(CONFIG)
         km.train(X_train)
         km_eval = km.evaluate(X_test)
@@ -88,9 +103,11 @@ def main():
         plot_anomaly_scores(scores, km.threshold, save_path=str(FIGURES_DIR / "kmeans_anomaly_scores.png"))
         save_metrics(km_eval, str(REPORTS_DIR / "kmeans_metrics.json"))
         km.save(str(MODELS_DIR / "kmeans.joblib"))
+        # TODO: add unsupervised AUC metric once we have a clean benign-only baseline
 
+    # --- ANN ---
     if not args.skip_ann:
-        logger.info("training ANN...")
+        logger.info("=== training ANN ===")
         ann = ANNModel(CONFIG)
         ann.build(n_features, num_classes)
         ann.train(X_train, y_train, X_val, y_val)
@@ -100,18 +117,21 @@ def main():
         ann.save(str(MODELS_DIR / "ann_model"))
         plot_training_history(ann.history, "ANN", save_path=str(FIGURES_DIR / "ann_training_history.png"))
         plot_confusion_matrix(
-            np.array(ann_results["confusion_matrix"]), class_names,
+            np.array(ann_results["confusion_matrix"]),
+            class_names,
             "ANN Confusion Matrix",
             save_path=str(FIGURES_DIR / "ann_confusion_matrix.png"),
         )
         all_results["ANN"] = ann_metrics
 
+    # --- CNN-LSTM ---
     if not args.skip_cnn_lstm:
-        logger.info("training CNN-LSTM...")
+        logger.info("=== training CNN-LSTM ===")
         cnn_lstm = CNNLSTMModel(CONFIG)
         cnn_lstm.build(n_features, num_classes)
         cnn_lstm.train(X_train, y_train, X_val, y_val)
         cl_results = cnn_lstm.evaluate(X_test, y_test, class_names)
+        # CNN-LSTM uses sliding windows so first seq_len samples are dropped
         cl_metrics = compute_metrics(
             y_test[cnn_lstm.seq_len:],
             cnn_lstm.predict(X_test, y_test),
@@ -121,7 +141,8 @@ def main():
         cnn_lstm.save(str(MODELS_DIR / "cnn_lstm_model"))
         plot_training_history(cnn_lstm.history, "CNN-LSTM", save_path=str(FIGURES_DIR / "cnn_lstm_training_history.png"))
         plot_confusion_matrix(
-            np.array(cl_results["confusion_matrix"]), class_names,
+            np.array(cl_results["confusion_matrix"]),
+            class_names,
             "CNN-LSTM Confusion Matrix",
             save_path=str(FIGURES_DIR / "cnn_lstm_confusion_matrix.png"),
         )
@@ -132,7 +153,7 @@ def main():
         plot_model_comparison(all_results, save_path=str(FIGURES_DIR / "model_comparison.png"))
         save_metrics(all_results, str(REPORTS_DIR / "all_models_comparison.json"))
 
-    logger.info("training complete. results saved to reports/")
+    logger.info("done. results in reports/")
 
 
 if __name__ == "__main__":
