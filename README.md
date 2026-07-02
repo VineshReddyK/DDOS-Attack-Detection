@@ -8,9 +8,11 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-2.0-009688.svg)](https://fastapi.tiangolo.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Real-time DDoS attack detection system powered by a four-model ML ensemble. Trained on the **CIC-DDoS2019** dataset, deployed as a production-ready REST + WebSocket API.
+This is a project I put together to spot DDoS attacks in network traffic as they happen. Rather than lean on a single classifier, it runs four models and has them vote — in my testing that combination held up better across the trickier attack types than any one of them did alone. It's trained on the CIC-DDoS2019 dataset and served through a REST + WebSocket API.
 
-## Architecture
+## How it works
+
+Here's the whole pipeline at a glance:
 
 ```
 Traffic Flow (78 features)
@@ -32,19 +34,23 @@ Traffic Flow (78 features)
                   └──► PSI Drift Alert
 ```
 
-## Models
+A flow comes in, gets scaled, and every model weighs in. The weighted vote makes the benign-vs-attack call. If it lands on attack you can ask *why* with SHAP, and separately you can check whether live traffic has started drifting away from what the models were trained on (PSI).
 
-| Model | Architecture | Role |
+## The models
+
+| Model | Architecture | Why it's here |
 |-------|-------------|------|
-| **Random Forest** | 200 trees, max_depth=20 | Primary classifier, SHAP explainability |
-| **ANN** | 128→64→32 Dense + BatchNorm + Dropout | Deep feature learning |
-| **CNN-LSTM** | Conv1D → LSTM on 10-step windows | Temporal pattern detection |
-| **K-Means** | 10 clusters, 95th-pct threshold | Unsupervised anomaly detection |
-| **Ensemble** | Weighted vote (RF=0.35, ANN=0.30, CNN-LSTM=0.25, KMeans=0.10) | Final decision |
+| **Random Forest** | 200 trees, max_depth=20 | Does most of the heavy lifting; also the one SHAP explains |
+| **ANN** | 128→64→32 Dense + BatchNorm + Dropout | Picks up deeper feature interactions |
+| **CNN-LSTM** | Conv1D → LSTM on 10-step windows | Catches patterns that only show up over time |
+| **K-Means** | 10 clusters, 95th-pct threshold | Unsupervised safety net for weird, unseen traffic |
+| **Ensemble** | Weighted vote (RF=0.35, ANN=0.30, CNN-LSTM=0.25, KMeans=0.10) | Final call |
 
-## Model Performance (CIC-DDoS2019)
+RF gets the biggest weight because it was the most consistent for me. K-Means gets the smallest — it's there to flag anomalies, not to drive the decision.
 
-Evaluated on the held-out test split of the CIC-DDoS2019 dataset (12 attack types + benign traffic).
+## Model performance (CIC-DDoS2019)
+
+Numbers below are from the held-out test split (12 attack types plus benign traffic).
 
 | Model | Accuracy | Precision | Recall | F1-Score | AUC-ROC |
 |-------|----------|-----------|--------|----------|---------|
@@ -54,27 +60,23 @@ Evaluated on the held-out test split of the CIC-DDoS2019 dataset (12 attack type
 | **K-Means** | 92.1% | 91.3% | 93.2% | 92.2% | 0.961 |
 | **Ensemble** | **99.4%** | **99.3%** | **99.2%** | **99.3%** | **0.999** |
 
-> K-Means is unsupervised and operates without labels — lower supervised metrics are expected. It contributes primarily to detecting novel/zero-day attack patterns outside the training distribution.
+K-Means is unsupervised, so don't read too much into its supervised scores being lower — that's expected. Its real job is catching novel/zero-day patterns that fall outside the training distribution.
 
-## Features
+## What's in the box
 
-- **JWT Authentication** — bearer token auth on all prediction endpoints
-- **SHAP Explainability** — "why was this flow flagged?" with per-feature importance
-- **Data Drift Detection** — Population Stability Index (PSI) alerts when live traffic diverges from training data
-- **WebSocket Streaming** — real-time detection at `/api/v1/ws/detect`
-- **Prometheus Metrics** — `/metrics` endpoint for Grafana dashboards
-- **Rate Limiting** — 200 req/min per IP via slowapi
-- **Docker** — lean ~300MB image (no TensorFlow at runtime)
-- **AWS ECS + Terraform** — one-command cloud deployment
-- **Kubernetes** — HPA-enabled deployment manifests
+- **JWT auth** on every prediction endpoint — grab a token first, then predict
+- **SHAP explanations** so a flagged flow isn't just a black-box "ATTACK"
+- **Drift detection** (Population Stability Index) that warns you when live traffic stops looking like the training data
+- **WebSocket streaming** at `/api/v1/ws/detect` for real-time detection
+- **Prometheus metrics** at `/metrics` if you want to wire up Grafana
+- **Rate limiting** — 200 req/min per IP via slowapi
+- **Docker** image kept lean (~300MB, no TensorFlow at runtime)
+- **AWS ECS + Terraform** for one-command deploys
+- **Kubernetes** manifests with HPA if you'd rather run it on EKS
 
-## Quick Start
+## Getting started
 
-### Prerequisites
-- Python 3.11+
-- Git
-
-### Install
+You'll need Python 3.11+ and git.
 
 ```bash
 git clone https://github.com/VineshReddyK/DDOS-Attack-Detection.git
@@ -82,24 +84,27 @@ cd DDOS-Attack-Detection
 make install
 ```
 
-### Train
+### Training
+
+Drop the CIC-DDoS2019 CSVs into `data/raw/` first, then:
 
 ```bash
-# Download CIC-DDoS2019 dataset to data/raw/, then:
 make train
 
-# Or merge multiple CSVs:
+# if you've got several CSVs to merge:
 make train-merge
 ```
 
-### Serve
+### Running the API
 
 ```bash
 make serve
-# → http://localhost:8000/docs
+# then open http://localhost:8000/docs
 ```
 
 ### Get a token
+
+Everything below needs a token, so start here:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/token \
@@ -119,6 +124,8 @@ curl -X POST http://localhost:8000/api/v1/predict \
 ```
 
 ### Ensemble prediction
+
+If you want all four models to weigh in:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/predict/ensemble \
@@ -143,7 +150,7 @@ curl -X POST http://localhost:8000/api/v1/drift \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"flows": [[...], [...], ...]}'
-# Response: {"status": "stable|warning|critical", "drifted_features": {...}}
+# you'll get back: {"status": "stable|warning|critical", "drifted_features": {...}}
 ```
 
 ### WebSocket streaming
@@ -164,11 +171,11 @@ asyncio.run(stream())
 
 ```bash
 make docker-build
-make docker-up    # starts API
+make docker-up    # starts the API
 make docker-down
 ```
 
-## AWS ECS Deployment
+## Deploying to AWS ECS
 
 ```bash
 cd terraform/
@@ -177,7 +184,7 @@ terraform plan -var="api_secret_key=<strong-secret>"
 terraform apply -var="api_secret_key=<strong-secret>"
 ```
 
-After apply, push your Docker image to the ECR URL printed in outputs:
+Once that's applied, push your image to the ECR URL that shows up in the outputs:
 
 ```bash
 docker tag ddos-attack-detection:latest <ecr_url>:latest
@@ -187,71 +194,73 @@ docker push <ecr_url>:latest
 ## Kubernetes (EKS)
 
 ```bash
-# Create JWT secret
+# create the JWT secret first
 kubectl create secret generic ddos-api-secrets \
   --from-literal=api-secret-key=<strong-secret>
 
-# Deploy
+# then deploy
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/hpa.yaml
 ```
 
-## API Reference
+## API reference
 
-| Method | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | What it does |
 |--------|----------|------|-------------|
-| POST | `/api/v1/auth/token` | No | Issue JWT token |
+| POST | `/api/v1/auth/token` | No | Issue a JWT token |
 | GET | `/api/v1/health` | No | Health check |
-| GET | `/api/v1/info` | No | Loaded models info |
-| POST | `/api/v1/predict` | Yes | Single flow prediction |
-| POST | `/api/v1/predict/batch` | Yes | Batch prediction |
+| GET | `/api/v1/info` | No | Which models are loaded |
+| POST | `/api/v1/predict` | Yes | Single flow |
+| POST | `/api/v1/predict/batch` | Yes | A batch of flows |
 | POST | `/api/v1/predict/ensemble` | Yes | Weighted ensemble |
 | POST | `/api/v1/explain` | Yes | SHAP feature importance |
-| POST | `/api/v1/drift` | Yes | PSI drift detection |
+| POST | `/api/v1/drift` | Yes | PSI drift check |
 | WS | `/api/v1/ws/detect` | Token param | Real-time streaming |
 | GET | `/metrics` | No | Prometheus metrics |
 
-Full interactive docs: `http://localhost:8000/docs`
+Full interactive docs live at `http://localhost:8000/docs`.
 
-## Project Structure
+## Project layout
 
 ```
-├── configs/config.yaml         # Hyperparameters for all models
+├── configs/config.yaml         # hyperparameters for every model
 ├── src/
-│   ├── data/preprocessor.py    # Load, clean, scale, split
+│   ├── data/preprocessor.py    # load, clean, scale, split
 │   ├── models/
 │   │   ├── random_forest_model.py
 │   │   ├── kmeans_model.py
 │   │   ├── ann_model.py
 │   │   ├── cnn_lstm_model.py
-│   │   └── ensemble.py         # Weighted vote across models
+│   │   └── ensemble.py         # the weighted vote
 │   ├── utils/
 │   │   ├── explainer.py        # SHAP TreeExplainer
-│   │   └── drift_detector.py   # PSI-based drift detection
+│   │   └── drift_detector.py   # PSI drift detection
 │   ├── api/
 │   │   ├── main.py             # FastAPI app + middleware
-│   │   ├── routes.py           # All endpoints incl. WebSocket
+│   │   ├── routes.py           # every endpoint, WebSocket included
 │   │   ├── schemas.py          # Pydantic v2 models
 │   │   ├── auth.py             # JWT issue + verify
-│   │   ├── model_registry.py   # Singleton model loader
+│   │   ├── model_registry.py   # singleton model loader
 │   │   └── middleware/
 │   │       └── metrics.py      # Prometheus middleware
-│   ├── train.py                # Training pipeline
+│   ├── train.py                # training pipeline
 │   └── predict.py              # CLI inference
 ├── tests/
 │   ├── test_preprocessor.py
 │   ├── test_models.py
 │   └── test_api.py
-├── terraform/                  # AWS ECS + Fargate infrastructure
+├── terraform/                  # AWS ECS + Fargate
 ├── k8s/                        # Kubernetes manifests (EKS)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Makefile
-└── .github/workflows/ci.yml    # Lint → Test → Docker Build
+└── .github/workflows/ci.yml    # lint → test → docker build
 ```
 
-## CI/CD Pipeline
+## CI/CD
+
+Every push to main runs lint first, then unit tests and an API smoke test in parallel, and finally a Docker build:
 
 ```
 Push to main
@@ -265,9 +274,9 @@ Push to main
            Docker Build
 ```
 
-## Inference Latency
+## Inference latency
 
-Measured on a single-core CPU (no GPU) with warm model cache. All times are end-to-end including pre-processing and post-processing.
+Measured on a single CPU core (no GPU) with a warm model cache. Times are end-to-end, including pre- and post-processing.
 
 | Model | p50 | p95 | p99 | Throughput |
 |-------|-----|-----|-----|-----------|
@@ -278,41 +287,35 @@ Measured on a single-core CPU (no GPU) with warm model cache. All times are end-
 | **Ensemble** | 12 ms | 22 ms | 30 ms | ~80 req/s |
 | **WebSocket stream** | — | — | — | ~200 flows/s |
 
-> Ensemble latency is the sum of all models run in parallel threads. GPU inference (CUDA) reduces CNN-LSTM p50 to ~1 ms and ensemble throughput to ~600 req/s.
-
----
+Ensemble latency is basically all four models run together on parallel threads. On a GPU (CUDA) the CNN-LSTM p50 drops to about 1 ms and ensemble throughput climbs to roughly 600 req/s.
 
 ## Dataset
 
-[CIC-DDoS2019](https://www.unb.ca/cic/datasets/ddos-2019.html) — University of New Brunswick. Contains benign traffic and 12 DDoS attack types (DNS, NTP, LDAP, MSSQL, NetBIOS, SNMP, UDP, UDP-Lag, WebDDoS, SYN, TFTP, UDPLag).
+[CIC-DDoS2019](https://www.unb.ca/cic/datasets/ddos-2019.html) from the University of New Brunswick. It has benign traffic plus 12 DDoS attack types (DNS, NTP, LDAP, MSSQL, NetBIOS, SNMP, UDP, UDP-Lag, WebDDoS, SYN, TFTP, UDPLag).
 
-## Data & Compliance
+## Data & compliance
 
-### Data Handling
+**What the model actually sees.** It works on 78 numerical traffic features per flow — packet sizes, inter-arrival times, byte ratios, flag counts, that sort of thing. It does *not* touch:
 
-This system processes **network traffic features** (78 numerical metrics per flow: packet sizes, inter-arrival times, byte ratios, flag counts, etc.). It does **not** process:
-- Packet payloads or content
-- Personally identifiable information (PII)
-- Source/destination IP addresses (features are derived statistics, not raw IPs)
+- packet payloads or content
+- personally identifiable information (PII)
+- raw source/destination IPs (the features are derived statistics, not the IPs themselves)
 
-### GDPR Considerations
+**GDPR notes:**
 
 | Concern | Status |
 |---------|--------|
 | Personal data in features | No — all 78 features are statistical aggregates |
-| Data retention | Features are processed in-memory; no flow data is persisted by default |
-| Right to erasure | Not applicable — no user data stored |
-| Data minimization | Only the 78 pre-defined CIC features are extracted; raw packets are discarded |
+| Data retention | Features are processed in memory; no flow data is persisted by default |
+| Right to erasure | Not applicable — no user data is stored |
+| Data minimization | Only the 78 predefined CIC features are extracted; raw packets are discarded |
 
-### Enterprise / ISP Deployment
+**If you're running this on a real production network** where the traffic belongs to identifiable users, a few things worth doing:
 
-If deploying in a production network environment where traffic belongs to identifiable users:
-- Consult your legal team on applicable data protection laws (GDPR, CCPA, etc.)
-- Consider anonymizing source IPs before feature extraction
-- Document your data retention and deletion policy
-- Ensure model predictions are not used as sole basis for user-impacting decisions without human review
-
----
+- check with your legal team on the laws that apply (GDPR, CCPA, and so on)
+- consider anonymizing source IPs before you extract features
+- write down your retention and deletion policy
+- don't let a model prediction be the sole basis for anything that affects a user without a human in the loop
 
 ## Author
 

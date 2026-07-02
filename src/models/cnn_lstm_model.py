@@ -1,12 +1,14 @@
-import numpy as np
-from pathlib import Path
-import yaml
 import logging
+from pathlib import Path
+
+import numpy as np
+import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def build_cnn_lstm(seq_len: int, n_features: int, num_classes: int, cfg: dict):
+def build_cnn_lstm(seq_len, n_features, num_classes, cfg):
+    # deferred keras import — see the note in ann_model.py, same reasoning here
     from tensorflow import keras
     from tensorflow.keras import layers
 
@@ -14,11 +16,18 @@ def build_cnn_lstm(seq_len: int, n_features: int, num_classes: int, cfg: dict):
     inputs = keras.Input(shape=(seq_len, n_features), name="sequence_input")
     x = inputs
 
+    # conv stack first: pull out local patterns, then downsample with pooling
     for filters in cl_cfg["cnn_filters"]:
-        x = layers.Conv1D(filters=filters, kernel_size=cl_cfg["cnn_kernel_size"], activation="relu", padding="same")(x)
+        x = layers.Conv1D(
+            filters=filters,
+            kernel_size=cl_cfg["cnn_kernel_size"],
+            activation="relu",
+            padding="same",
+        )(x)
         x = layers.BatchNormalization()(x)
         x = layers.MaxPooling1D(pool_size=2, padding="same")(x)
 
+    # then the LSTMs. every layer but the last returns sequences so they can stack
     for i, units in enumerate(cl_cfg["lstm_units"]):
         return_seq = i < len(cl_cfg["lstm_units"]) - 1
         x = layers.LSTM(units, return_sequences=return_seq)(x)
@@ -44,26 +53,32 @@ def build_cnn_lstm(seq_len: int, n_features: int, num_classes: int, cfg: dict):
 
 
 class CNNLSTMModel:
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path="configs/config.yaml"):
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
         self.model = None
         self.history = None
         self.seq_len = self.config["cnn_lstm"]["sequence_length"]
 
-    def build(self, n_features: int, num_classes: int) -> None:
+    def build(self, n_features, num_classes):
         self.model = build_cnn_lstm(self.seq_len, n_features, num_classes, self.config)
-        logger.info("CNN-LSTM model built: seq_len=%d, n_features=%d, num_classes=%d", self.seq_len, n_features, num_classes)
+        logger.info(
+            "CNN-LSTM built: seq_len=%d, n_features=%d, num_classes=%d",
+            self.seq_len, n_features, num_classes,
+        )
 
     @staticmethod
-    def to_sequences(X: np.ndarray, y: np.ndarray, seq_len: int):
+    def to_sequences(X, y, seq_len):
+        # slide a window of length seq_len over the rows. the label for each
+        # window is the row right after it, so we're predicting the next step.
+        # heads up: this drops the last seq_len rows since they have no target.
         Xs, ys = [], []
         for i in range(len(X) - seq_len):
             Xs.append(X[i: i + seq_len])
             ys.append(y[i + seq_len])
         return np.array(Xs), np.array(ys)
 
-    def train(self, X_train, y_train, X_val, y_val) -> None:
+    def train(self, X_train, y_train, X_val, y_val):
         from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
         cl_cfg = self.config["cnn_lstm"]
@@ -87,7 +102,9 @@ class CNNLSTMModel:
             verbose=1,
         )
 
-    def predict(self, X: np.ndarray, y: np.ndarray = None) -> np.ndarray:
+    def predict(self, X, y=None):
+        # y is only used to build the windows; if we don't have labels at
+        # inference time, zeros are fine as placeholders.
         if y is None:
             y = np.zeros(len(X))
         X_seq, _ = self.to_sequences(X, y, self.seq_len)
@@ -96,7 +113,7 @@ class CNNLSTMModel:
             return (raw.squeeze() > 0.5).astype(int)
         return np.argmax(raw, axis=1)
 
-    def evaluate(self, X_test, y_test, class_names: list[str]) -> dict:
+    def evaluate(self, X_test, y_test, class_names):
         from sklearn.metrics import classification_report, confusion_matrix
 
         X_seq, y_seq = self.to_sequences(X_test, y_test, self.seq_len)
@@ -111,12 +128,12 @@ class CNNLSTMModel:
         logger.info("\n%s", classification_report(y_seq, y_pred, target_names=class_names))
         return {"classification_report": report, "confusion_matrix": cm.tolist()}
 
-    def save(self, path: str) -> None:
+    def save(self, path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.model.save(path)
-        logger.info("Saved CNN-LSTM model to %s", path)
+        logger.info("saved CNN-LSTM model to %s", path)
 
-    def load(self, path: str) -> None:
+    def load(self, path):
         from tensorflow import keras
         self.model = keras.models.load_model(path)
-        logger.info("Loaded CNN-LSTM model from %s", path)
+        logger.info("loaded CNN-LSTM model from %s", path)
