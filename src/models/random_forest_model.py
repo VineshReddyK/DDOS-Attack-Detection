@@ -1,4 +1,3 @@
-import numpy as np
 import joblib
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
